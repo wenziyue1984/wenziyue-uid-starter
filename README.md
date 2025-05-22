@@ -149,12 +149,18 @@ VALUES ('blog', 10000000000000000, 1000, NOW());
 ## **🚀 使用方式**
 
 ```java
+import com.wenziyue.uid.core.IdGen;
+import com.wenziyue.uid.common.Result;
+import com.wenziyue.uid.common.Status;
+
 @Autowired
-private SegmentIdGeneratorImpl idGenerator;
+private IdGen idGen;
 
 public void create() {
-    long id = idGenerator.nextId().getId(); // 返回 Result<Long> 封装对象
+  Result id = idGen.nextId(); // 返回 Result 封装对象
+  if (id.getStatus().equals(Status.SUCCESS)) {
     System.out.println("生成 ID：" + id);
+  }
 }
 ```
 

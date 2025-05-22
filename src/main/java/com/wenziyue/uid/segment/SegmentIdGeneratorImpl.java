@@ -11,6 +11,7 @@ import lombok.val;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Slf4j
 @RequiredArgsConstructor
+@Component
 public class SegmentIdGeneratorImpl implements IdGen {
 
     private final Map<String, SegmentBuffer> cache  = new ConcurrentHashMap<>();

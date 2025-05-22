@@ -39,6 +39,6 @@ public class SegmentIdDaoImpl implements SegmentIdDao{
 
     @Override
     public List<String> getAllTags() {
-        return jdbc.queryForList("SELECT biz_tag FROM" + TABLE, String.class);
+        return jdbc.queryForList("SELECT biz_tag FROM " + TABLE, String.class);
     }
 }

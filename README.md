@@ -4,21 +4,30 @@
 
 
 
-基于美团开源项目 [Leaf Segment](https://github.com/Meituan-Dianping/Leaf) 封装的分布式唯一 ID 生成器，支持高可用、高并发、趋势递增的 17 位长整型 ID。
+基于美团开源项目 [Leaf Segment](https://github.com/Meituan-Dianping/Leaf) 封装的分布式唯一 ID 生成器组件，支持高并发、高可用、趋势递增的ID。
+
+
+
+> 当前实现完全参考 Leaf 的 Segment 模式，未引入雪花算法（Snowflake）。支持后续扩展。
 
 
 
 ------
+
+
 
 
 
 ## **✨ 功能特性**
 
-- 基于数据库的 **Segment 模式**
-- **自动建表**（配合 Flyway 使用）
-- **自定义初始 ID 值**
-- 支持 **Cached 模式 / Default 模式**
-- 支持可选依赖 Flyway（无需强制使用）
+
+
+- 基于数据库的 **Segment 模式** 实现（支持双段缓存、懒加载、异步预加载等机制）
+- 支持 **高性能、本地发号、线程安全**
+- 自动建表（配合 Flyway 使用）
+- 支持 **自定义初始值、步长、业务隔离**
+- 支持 **tag 缓存热更新**（定时刷新数据库感知新 tag）
+- 内置异常码机制，明确区分各种失败场景
 
 
 
@@ -26,7 +35,20 @@
 
 
 
-## **📦 引入依赖**
+## **📦引入依赖**
+
+首先在 `pom.xml` 中添加 GitHub 仓库地址：
+
+```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/wenziyue1984/wenziyue-uid-starter</url>
+    </repository>
+</repositories>
+```
+
+然后引入依赖：
 
 ```xml
 <dependency>
@@ -42,13 +64,13 @@
 
 
 
-## **⚙️ 使用方式**
+## **⚙️ 配置方式**
 
-### **1. 使用 Flyway 自动建表（推荐）**
 
-#### **✅ 添加 Flyway 依赖**
 
-你需要在主项目中添加 Flyway：
+### **✅ 推荐使用 Flyway 自动建表**
+
+#### **Maven 中添加依赖：**
 
 ```xml
 <dependency>
@@ -64,13 +86,9 @@
 
 
 
-#### **✅ 配置** 
+#### **application.yml 配置示例：**
 
-#### **application.yml**
-
-
-
-```yaml
+```yml
 spring:
   flyway:
     enabled: true
@@ -80,16 +98,13 @@ spring:
 
 wenziyue:
   uid:
-    use-cached: false   # 是否使用 CachedUidGenerator（默认 false）
-    biz-tag: blog        # 业务标识
-    step: 100            # 步长
-    init-id: 10000000000000000  # 初始 ID（默认从 1 开始）
-    auto-create-table: true     # 是否自动初始化 leaf_alloc 表记录
+    biz-tag: blog
+    step: 1000
+    init-id: 10000000000000000
+    auto-create-table: true
 ```
 
-> ✅ 表结构脚本将从 starter 中的 classpath:wzyuid/db/R__create_leaf_tables.sql 自动执行
-
-> ✅ 初始记录也会自动写入数据库，无需手动维护
+> ✅ 启动后会自动执行 classpath:db/migration/R__create_leaf_tables.sql 创建 leaf_alloc 表并初始化对应 tag 记录。
 
 
 
@@ -97,23 +112,20 @@ wenziyue:
 
 
 
-### **2. 不使用 Flyway（手动建表）**
+### **❎ 手动建表方式（不使用 Flyway）**
 
-#### **✅ application.yml 配置**
+
 
 ```yaml
 wenziyue:
   uid:
-    use-cached: true
     biz-tag: blog
-    step: 100
+    step: 1000
     init-id: 10000000000000000
     auto-create-table: false
 ```
 
-
-
-#### **✅ 手动创建数据库表**
+对应建表 SQL：
 
 ```sql
 CREATE TABLE IF NOT EXISTS leaf_alloc (
@@ -124,10 +136,9 @@ CREATE TABLE IF NOT EXISTS leaf_alloc (
     PRIMARY KEY (biz_tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分布式 ID 号段管理表';
 
-INSERT INTO leaf_alloc (biz_tag, max_id, step, update_time) VALUES ('你的业务名', '起始id，建议10000000000000000', '每次获取id数量，建议1000', NOW());
+INSERT INTO leaf_alloc (biz_tag, max_id, step, update_time) 
+VALUES ('blog', 10000000000000000, 1000, NOW());
 ```
-
-> 若未使用 Flyway，则必须手动建表（表名为 leaf_alloc，不可更改）
 
 
 
@@ -139,11 +150,11 @@ INSERT INTO leaf_alloc (biz_tag, max_id, step, update_time) VALUES ('你的业�
 
 ```java
 @Autowired
-private UidUtils uidUtils;
+private SegmentIdGeneratorImpl idGenerator;
 
-public void test() {
-    long id = uidUtils.nextId();
-    System.out.println("生成的ID: " + id);
+public void create() {
+    long id = idGenerator.nextId().getId(); // 返回 Result<Long> 封装对象
+    System.out.println("生成 ID：" + id);
 }
 ```
 
@@ -153,13 +164,98 @@ public void test() {
 
 
 
-## **⚠️ 注意事项**
+## **🔁 核心发号机制**
 
-1. 本 starter 中 Leaf 表的建表脚本路径为 classpath:wzyuid/db，**请确保项目中没有同名路径，否则可能导致项目启动自动执行其中的sql文件。**
-2. 若不启用 Flyway，请务必手动创建表。
-3. 推荐配置 init-id 起始为 10000000000000000，避免前期 ID 长度不一致。
+- 初始化时预加载所有业务 tag，创建空缓存（SegmentBuffer），**懒加载首段**
+
+- 当当前段剩余不到 20% 时，异步后台线程预加载下一段
+
+- 当前段耗尽时：
+
+  - 若下一段准备好：立即切换
+  - 若未准备好：等待最多 50ms，若仍未就绪返回异常码
+
+  
+
+所有逻辑均采用原子类 + 读写锁组合，保证高并发下的一致性与可用性。
 
 
+
+------
+
+
+
+## **❗ 异常码说明**
+
+
+
+| **异常码值** | **含义**                              |
+| ------------ | ------------------------------------- |
+| -1           | Segment ID 缓存未初始化成功           |
+| -2           | 配置的 bizTag 不存在于数据库          |
+| -3           | 当前段与下一段均未准备好，ID 无法生成 |
+
+
+
+------
+
+
+
+## **🔄 缓存动态刷新机制**
+
+- 使用定时任务 ScheduledExecutorService 每 60 秒从数据库刷新一次所有 bizTag
+- 自动感知新增或删除 tag，支持缓存热更新（无需重启）
+
+
+
+------
+
+## **✂️ 不能保证id连续性**
+
+当服务重启时，重启前已获取的号段会丢失。因此不能保证id连续性，**如果要求id必须连续那么请不要使用**。
+
+------
+
+
+## **🔍 与 Redis INCR 模式的对比**
+
+
+
+| **对比项** | **Segment 模式（本组件）**              | **Redis INCR 模式**                |
+| ---------- | --------------------------------------- | ---------------------------------- |
+| 性能       | 极高（内存发号）                        | 高（依赖网络与 Redis 性能）        |
+| 分布式支持 | 需配置 DB，服务间共享 tag               | 天然支持                           |
+| 跨语言支持 | 无，限 Java 项目                        | 高，可用于多端系统                 |
+| 可控性     | 强（本地缓存、懒加载、步长可调）        | 弱（仅通过 key 控制）              |
+| 持久性     | 高（DB 存储）                           | 依赖 Redis 持久化策略              |
+| 容错性     | 高（双段缓存，线程隔离）                | Redis 异常时全链路中断             |
+| 部署成本   | 中（需建表）                            | 低（仅 Redis 即可）                |
+| 适用场景   | 核心业务高并发 ID（订单、用户、评论等） | 原型系统、分布式微服务、跨语言接口 |
+
+
+
+------
+
+
+
+## **✅ 推荐使用场景**
+
+- 高并发业务系统中的 ID 生成
+- 需要保证 **趋势递增**、**高可用**、**低延迟** 的场景
+- 对 Redis 依赖较少或希望脱离中间件的系统
+- 希望将 UID 逻辑内聚在 Java 项目内部，方便维护与扩展
+
+
+
+------
+
+
+
+## **🔚 总结**
+
+这个 starter 的目标是提供一套高度工程化、灵活可控的 UID 生成方案，它在保证稳定性和性能的同时也兼顾了易用性和扩展性。
+
+你可以将它集成在任何 Spring Boot 项目中，作为正式环境下的主力发号组件。未来也支持拓展为 UID 微服务。
 
 ------
 

@@ -48,11 +48,11 @@
             <scope>provided</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.github.Meituan-Dianping</groupId>
-            <artifactId>Leaf</artifactId>
-            <version>3b374d8</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.github.Meituan-Dianping</groupId>-->
+<!--            <artifactId>Leaf</artifactId>-->
+<!--            <version>3b374d8</version>-->
+<!--        </dependency>-->
 
         <!-- flyway -->
         <dependency>
@@ -91,11 +91,11 @@
         </repository>
     </distributionManagement>
 
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
+<!--    <repositories>-->
+<!--        <repository>-->
+<!--            <id>jitpack.io</id>-->
+<!--            <url>https://jitpack.io</url>-->
+<!--        </repository>-->
+<!--    </repositories>-->
 
 </project>

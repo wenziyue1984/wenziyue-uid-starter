@@ -1,13 +1,17 @@
 package com.wenziyue.uid.properties;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import javax.annotation.PostConstruct;
 
 /**
  * UID 生成器的配置属性类。
  *
  * @author wenziyue
  */
+@Slf4j
 @Data
 @ConfigurationProperties(prefix = "wenziyue.uid")
 public class UidGeneratorProperties {
@@ -28,6 +32,11 @@ public class UidGeneratorProperties {
     private int step = 1000;
 
     /**
+     * 百分之多少时切换segment，适用于 Segment 模式。
+     */
+    private int prepareNextPercent = 80;
+
+    /**
      * 初始 ID，适用于 Segment 模式。
      */
     private long initId = 1L;
@@ -46,5 +55,13 @@ public class UidGeneratorProperties {
      * 是否自动创建表，适用于 Segment 模式。
      */
     private boolean autoCreateTable = true;
+
+    @PostConstruct
+    public void validate() {
+        log.info("wenziyue.uid.prepareNextPercent 配置: {}", prepareNextPercent);
+        if (prepareNextPercent < 1 || prepareNextPercent > 100) {
+            throw new IllegalArgumentException("配置中prepareNextPercent 必须在 1 ~ 100 之间");
+        }
+    }
 
 }

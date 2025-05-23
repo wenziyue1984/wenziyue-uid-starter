@@ -106,11 +106,11 @@ public class SegmentIdGeneratorImpl implements IdGen {
             try {
                 // 当id的值超过当前段80%的时候，开始异步准备下一段
                 if (!buffer.isNextReady()
-                        && buffer.getCurrent().getIdle() < buffer.getCurrent().getStep() * 0.8
+                        && buffer.getCurrent().getIdle() < buffer.getCurrent().getStep() * (properties.getPrepareNextPercent() / 100.0)
                         && buffer.getThreadRunning().compareAndSet(false, true)) {
                     taskExecutor.execute(() -> {
                         try {
-                            log.info("[Segment UID] 触发异步加载下一段，当前已用百分比：{}%", 80);
+                            log.info("[Segment UID] 触发异步加载下一段，当前已用百分比：{}%", properties.getPrepareNextPercent());
                             prepareNextSegment(buffer);
                         } finally {
                             // 同步状态时加写锁

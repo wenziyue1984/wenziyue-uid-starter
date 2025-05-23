@@ -6,7 +6,6 @@ import com.wenziyue.uid.segment.SegmentIdDao;
 import com.wenziyue.uid.segment.SegmentIdDaoImpl;
 import com.wenziyue.uid.segment.SegmentIdGeneratorImpl;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -31,8 +30,9 @@ public class WenziyueUidAutoConfiguration {
         return new SegmentIdDaoImpl(jdbc);
     }
 
-    @Bean
-    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
+    @Bean(name = "segmentUidTaskExecutor")
+    @ConditionalOnMissingBean(name = "segmentUidTaskExecutor")
+    public ThreadPoolTaskExecutor segmentUidTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);

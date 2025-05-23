@@ -5,7 +5,6 @@ import com.wenziyue.uid.common.Result;
 import com.wenziyue.uid.common.Status;
 import com.wenziyue.uid.core.IdGen;
 import com.wenziyue.uid.properties.UidGeneratorProperties;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,15 +27,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author wenziyue
  */
 @Slf4j
-@RequiredArgsConstructor
 @Component
 public class SegmentIdGeneratorImpl implements IdGen {
 
     private final Map<String, SegmentBuffer> cache  = new ConcurrentHashMap<>();
     private final UidGeneratorProperties properties;
     private final SegmentIdDao dao;
+    @Qualifier("segmentUidTaskExecutor")
     private final ThreadPoolTaskExecutor taskExecutor;
     private final ScheduledExecutorService segmentUidScheduler;
+
+    public SegmentIdGeneratorImpl(
+            UidGeneratorProperties properties,
+            SegmentIdDao dao,
+            @Qualifier("segmentUidTaskExecutor") ThreadPoolTaskExecutor taskExecutor,
+            ScheduledExecutorService segmentUidScheduler
+    ) {
+        this.properties = properties;
+        this.dao = dao;
+        this.taskExecutor = taskExecutor;
+        this.segmentUidScheduler = segmentUidScheduler;
+    }
+
     /**
      * 用来判断是否初始化成功
      */

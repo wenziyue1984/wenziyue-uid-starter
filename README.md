@@ -99,8 +99,9 @@ spring:
 wenziyue:
   uid:
     biz-tag: blog
-    step: 1000
-    init-id: 10000000000000000
+    step: 1000  # 每次获取号段长度
+    init-id: 10000000000000000  #  ID从10000000000000000开始
+    prepare-next-percent: 80  # 使用当前号段多少百分比时预加载下一个号段，默认 80，数值范围 1-100
     auto-create-table: true
 ```
 

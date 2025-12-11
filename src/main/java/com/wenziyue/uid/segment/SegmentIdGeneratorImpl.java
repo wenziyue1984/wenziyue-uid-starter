@@ -10,6 +10,8 @@ import lombok.val;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
@@ -73,6 +75,7 @@ public class SegmentIdGeneratorImpl implements IdGen {
      * 初始化，监听ApplicationReadyEvent事件，当springboot启动后开始执行，其实也可以使用@PostConstruct
      */
     @EventListener(ApplicationReadyEvent.class)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     public void initOnBoot() {
         if (!initOk.get()) {
             this.init();
@@ -89,7 +92,16 @@ public class SegmentIdGeneratorImpl implements IdGen {
     @Override
     public Result nextId() {
         if (!initOk.get()) {
-            return new Result(EXCEPTION_ID_IDCACHE_INIT_FALSE, Status.EXCEPTION);
+            try {
+                synchronized (this) {
+                    if (!initOk.get()) {
+                        init();
+                    }
+                }
+            } catch (Exception e) {
+                log.error("[Segment UID] 初始化失败", e);
+                return new Result(EXCEPTION_ID_IDCACHE_INIT_FALSE, Status.EXCEPTION);
+            }
         }
         SegmentBuffer buffer = cache.get(properties.getBizTag());
         if (buffer == null) {
